@@ -9,6 +9,13 @@ export interface LinkData {
   siteName?: string;
 }
 
+export interface FileData {
+  name: string;
+  size: number;
+  type: string;
+  data: string;
+}
+
 export interface BookData {
   id: string;
   title: string;
@@ -18,6 +25,7 @@ export interface BookData {
   voidY?: number;
   images?: string[];
   links?: LinkData[];
+  files?: FileData[];
 }
 
 interface BookProps {
@@ -181,23 +189,27 @@ export function Book({ data, onClick, onDragStart, onDragEnd, viewMode = 'spine'
             {data.title}
           </div>
           
-          {(data.links?.[0]?.image || (data.images && data.images[0])) && (
-            <div style={{
-              marginTop: '15px',
-              height: '80px',
-              width: '100%',
-              borderRadius: '4px',
-              overflow: 'hidden',
-              boxShadow: '0 4px 8px rgba(0,0,0,0.4)',
-              border: '1px solid rgba(229, 181, 103, 0.3)'
-            }}>
-              <img 
-                src={data.links?.[0]?.image || (data.images && data.images[0])} 
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                alt="Cover Thumbnail" 
-              />
-            </div>
-          )}
+          {(() => {
+            const coverImage = data.links?.find(link => link.image)?.image || data.images?.[0];
+            if (!coverImage) return null;
+            return (
+              <div style={{
+                marginTop: '15px',
+                height: '80px',
+                width: '100%',
+                borderRadius: '4px',
+                overflow: 'hidden',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.4)',
+                border: '1px solid rgba(229, 181, 103, 0.3)'
+              }}>
+                <img 
+                  src={coverImage} 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                  alt="Cover Thumbnail" 
+                />
+              </div>
+            );
+          })()}
         </div>
         
         {/* Back Cover (for realistic feel when pulled out) */}

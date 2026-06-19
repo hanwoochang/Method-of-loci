@@ -440,27 +440,26 @@ function App() {
         {isDraggingBook && (
           <motion.div
             id="void-zone"
-            initial={{ opacity: 0, x: 100 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 100 }}
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.5 }}
             style={{
               position: 'fixed',
-              top: 0,
-              right: 0,
-              width: '140px',
-              height: '100vh',
-              background: 'linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.7) 60%, #000 100%)',
-              boxShadow: '-10px 0 40px rgba(255,255,255,0.4), inset 20px 0 50px rgba(0,0,0,1)',
-              borderLeft: '2px solid rgba(255,255,255,0.9)',
+              bottom: '40px',
+              right: '40px',
+              width: '80px',
+              height: '80px',
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, #000 30%, #333 70%, #555 100%)',
+              boxShadow: '0 0 20px rgba(255,255,255,0.5), inset 0 0 15px rgba(0,0,0,1)',
+              border: '2px solid rgba(255,255,255,0.8)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              zIndex: 100,
+              zIndex: 9999,
             }}
           >
-            <div style={{ color: 'white', writingMode: 'vertical-rl', fontSize: '1.2rem', letterSpacing: '6px', fontWeight: 600, opacity: 1, textShadow: '0 0 15px rgba(255,255,255,1), 0 0 30px rgba(255,255,255,0.8)' }}>
-              공허로 던지기
-            </div>
+            <Trash2 size={32} color="rgba(255,255,255,0.8)" />
           </motion.div>
         )}
       </AnimatePresence>
@@ -471,8 +470,8 @@ function App() {
           {books.filter(b => b.shelfId === 'void').map(book => (
             <motion.div
               key={`void-${book.id}`}
-              initial={{ scale: 1, right: '140px', top: book.voidY ? book.voidY - 140 : '50%', rotate: -15, opacity: 1, filter: 'blur(0px)' }}
-              animate={{ scale: 0.05, right: '-50px', top: book.voidY ? book.voidY : '50%', rotate: 270, opacity: 0, filter: 'blur(8px)' }}
+              initial={{ scale: 1, right: '80px', top: book.voidY ? book.voidY - 140 : 'calc(100vh - 120px)', rotate: -15, opacity: 1, filter: 'blur(0px)' }}
+              animate={{ scale: 0.01, right: '40px', top: 'calc(100vh - 80px)', rotate: 360, opacity: 0, filter: 'blur(8px)' }}
               transition={{ duration: 0.5, ease: [0.55, 0.085, 0.68, 0.53] }}
               onAnimationComplete={() => handleDeleteBook(book.id)}
               style={{ position: 'absolute', transformOrigin: 'center center' }}

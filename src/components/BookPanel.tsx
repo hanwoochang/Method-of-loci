@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Edit3, Save, Image as ImageIcon, ExternalLink, Plus, Loader2 } from 'lucide-react';
+import { X, Edit3, Save, Image as ImageIcon, ExternalLink, Plus, Loader2, Paperclip, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { BookData, LinkData } from './Book';
 
 interface BookPanelProps {
@@ -17,13 +17,16 @@ export function BookPanel({ data, onClose, onDelete, onUpdate }: BookPanelProps)
   const [contentInput, setContentInput] = useState(data.content || '');
   const [imagesInput, setImagesInput] = useState<string[]>(data.images || []);
   const [linksInput, setLinksInput] = useState<LinkData[]>(data.links || []);
+  const [filesInput, setFilesInput] = useState<FileData[]>(data.files || []);
   const [colorInput, setColorInput] = useState(data.color);
   const [newLinkText, setNewLinkText] = useState('');
   const [isAddingLink, setIsAddingLink] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const imageScrollRef = React.useRef<HTMLDivElement>(null);
 
   const handleSave = () => {
-    onUpdate({ title: titleInput, content: contentInput, images: imagesInput, links: linksInput, color: colorInput });
+    onUpdate({ title: titleInput, content: contentInput, images: imagesInput, links: linksInput, files: filesInput, color: colorInput });
     setIsEditing(false);
   };
 
@@ -41,19 +44,60 @@ export function BookPanel({ data, onClose, onDelete, onUpdate }: BookPanelProps)
     e.preventDefault();
     setIsDragOver(false);
 
-    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+    const files = Array.from(e.dataTransfer.files);
     
     files.forEach(file => {
       const reader = new FileReader();
       reader.onload = (event) => {
         const base64 = event.target?.result as string;
         if (base64) {
-          if (isEditing) {
-            setImagesInput(prev => [...prev, base64]);
+          if (file.type.startsWith('image/')) {
+            if (isEditing) {
+              setImagesInput(prev => [...prev, base64]);
+            } else {
+              const newImages = [...(data.images || []), base64];
+              onUpdate({ images: newImages });
+              setImagesInput(newImages);
+            }
           } else {
-            const newImages = [...(data.images || []), base64];
-            onUpdate({ images: newImages });
-            setImagesInput(newImages);
+            const newFile = { name: file.name, size: file.size, type: file.type, data: base64 };
+            if (isEditing) {
+              setFilesInput(prev => [...prev, newFile]);
+            } else {
+              const newFiles = [...(data.files || []), newFile];
+              onUpdate({ files: newFiles });
+              setFilesInput(newFiles);
+            }
+          }
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleFileInput = (files: FileList) => {
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64 = event.target?.result as string;
+        if (base64) {
+          if (file.type.startsWith('image/')) {
+            if (isEditing) {
+              setImagesInput(prev => [...prev, base64]);
+            } else {
+              const newImages = [...(data.images || []), base64];
+              onUpdate({ images: newImages });
+              setImagesInput(newImages);
+            }
+          } else {
+            const newFile = { name: file.name, size: file.size, type: file.type, data: base64 };
+            if (isEditing) {
+              setFilesInput(prev => [...prev, newFile]);
+            } else {
+              const newFiles = [...(data.files || []), newFile];
+              onUpdate({ files: newFiles });
+              setFilesInput(newFiles);
+            }
           }
         }
       };
@@ -68,6 +112,16 @@ export function BookPanel({ data, onClose, onDelete, onUpdate }: BookPanelProps)
       const newImages = (data.images || []).filter((_, i) => i !== index);
       onUpdate({ images: newImages });
       setImagesInput(newImages);
+    }
+  };
+
+  const removeFile = (index: number) => {
+    if (isEditing) {
+      setFilesInput(prev => prev.filter((_, i) => i !== index));
+    } else {
+      const newFiles = (data.files || []).filter((_, i) => i !== index);
+      onUpdate({ files: newFiles });
+      setFilesInput(newFiles);
     }
   };
 
@@ -124,49 +178,174 @@ export function BookPanel({ data, onClose, onDelete, onUpdate }: BookPanelProps)
     if (!imagesToRender || imagesToRender.length === 0) return null;
 
     return (
+      <div style={{ position: 'relative', marginBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem' }}>
+        {imagesToRender.length > 2 && (
+          <button 
+            onClick={() => imageScrollRef.current?.scrollBy({ left: -300, behavior: 'smooth' })}
+            style={{
+              position: 'absolute',
+              left: '-15px',
+              top: '100px',
+              transform: 'translateY(-50%)',
+              zIndex: 10,
+              background: 'rgba(0, 0, 0, 0.7)',
+              border: '1px solid rgba(255,255,255,0.2)',
+              color: 'white',
+              borderRadius: '50%',
+              width: '32px',
+              height: '32px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+            }}
+          >
+            <ChevronLeft size={20} />
+          </button>
+        )}
+        
+        <div 
+          ref={imageScrollRef}
+          className="image-scroll-container"
+          style={{
+            display: 'flex',
+            gap: '1rem',
+            overflowX: 'auto',
+            minHeight: '220px',
+            scrollBehavior: 'smooth',
+            padding: '0 10px'
+          }}
+        >
+          {imagesToRender.map((src, index) => (
+            <div key={index} style={{ position: 'relative', flexShrink: 0 }}>
+              <img 
+                src={src} 
+                alt="첨부 이미지"
+                onClick={() => setSelectedImage(src)} 
+                style={{
+                  height: '200px',
+                  borderRadius: '8px',
+                  objectFit: 'contain',
+                  backgroundColor: 'rgba(0,0,0,0.5)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  cursor: 'zoom-in',
+                  transition: 'transform 0.2s',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              />
+              <button
+                onClick={() => removeImage(index)}
+                style={{
+                  position: 'absolute',
+                  top: '8px',
+                  right: '8px',
+                  background: '#e53e3e',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '24px',
+                  height: '24px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 5px rgba(0,0,0,0.5)'
+                }}
+                title="사진 삭제"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {imagesToRender.length > 2 && (
+          <button 
+            onClick={() => imageScrollRef.current?.scrollBy({ left: 300, behavior: 'smooth' })}
+            style={{
+              position: 'absolute',
+              right: '-15px',
+              top: '100px',
+              transform: 'translateY(-50%)',
+              zIndex: 10,
+              background: 'rgba(0, 0, 0, 0.7)',
+              border: '1px solid rgba(255,255,255,0.2)',
+              color: 'white',
+              borderRadius: '50%',
+              width: '32px',
+              height: '32px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+            }}
+          >
+            <ChevronRight size={20} />
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  const renderFiles = () => {
+    const filesToRender = isEditing ? filesInput : (data.files || []);
+    if (!filesToRender || filesToRender.length === 0) return null;
+
+    return (
       <div style={{
         display: 'flex',
-        gap: '1rem',
-        overflowX: 'auto',
-        paddingBottom: '1rem',
-        marginBottom: '1rem',
-        borderBottom: '1px solid rgba(255,255,255,0.1)',
-        minHeight: '220px'
+        flexDirection: 'column',
+        gap: '0.5rem',
+        marginBottom: '1.5rem',
       }}>
-        {imagesToRender.map((src, index) => (
-          <div key={index} style={{ position: 'relative', flexShrink: 0 }}>
-            <img 
-              src={src} 
-              alt="첨부 이미지" 
-              style={{
-                height: '200px',
-                borderRadius: '8px',
-                objectFit: 'contain',
-                backgroundColor: 'rgba(0,0,0,0.5)',
-                border: '1px solid rgba(255,255,255,0.2)'
-              }}
-            />
+        {filesToRender.map((file, index) => (
+          <div key={index} style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: 'rgba(255,255,255,0.05)',
+            padding: '0.8rem 1rem',
+            borderRadius: '8px',
+            border: '1px solid rgba(255,255,255,0.1)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', overflow: 'hidden' }}>
+              <div style={{ padding: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', color: 'rgba(255,255,255,0.8)' }}>
+                <Paperclip size={18} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <a 
+                  href={file.data} 
+                  download={file.name}
+                  style={{ color: 'var(--color-text-primary)', textDecoration: 'none', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '14px' }}
+                  title="다운로드"
+                >
+                  {file.name}
+                </a>
+                <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+                  {(file.size / 1024).toFixed(1)} KB
+                </span>
+              </div>
+            </div>
+            
             <button
-              onClick={() => removeImage(index)}
+              onClick={() => removeFile(index)}
               style={{
-                position: 'absolute',
-                top: '-8px',
-                right: '-8px',
-                background: '#e53e3e',
-                color: 'white',
+                background: 'transparent',
+                color: '#fc8181',
                 border: 'none',
-                borderRadius: '50%',
-                width: '24px',
-                height: '24px',
                 cursor: 'pointer',
+                padding: '4px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 2px 5px rgba(0,0,0,0.5)'
+                borderRadius: '4px',
               }}
-              title="사진 삭제"
+              title="파일 삭제"
             >
-              <X size={14} />
+              <X size={16} />
             </button>
           </div>
         ))}
@@ -261,9 +440,8 @@ export function BookPanel({ data, onClose, onDelete, onUpdate }: BookPanelProps)
             ))}
           </div>
         )}
-        
         {isEditing && (
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             <input 
               value={newLinkText}
               onChange={e => setNewLinkText(e.target.value)}
@@ -272,6 +450,7 @@ export function BookPanel({ data, onClose, onDelete, onUpdate }: BookPanelProps)
               disabled={isAddingLink}
               style={{
                 flex: 1,
+                minWidth: '200px',
                 background: 'rgba(0,0,0,0.3)',
                 border: '1px solid rgba(255,255,255,0.2)',
                 color: 'white',
@@ -301,6 +480,28 @@ export function BookPanel({ data, onClose, onDelete, onUpdate }: BookPanelProps)
               {isAddingLink ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
               추가
             </button>
+            <label style={{
+                background: 'rgba(255,255,255,0.1)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                color: 'white',
+                padding: '0 1rem',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+            }}>
+              <Paperclip size={16} />
+              파일 업로드
+              <input 
+                type="file" 
+                multiple 
+                onChange={(e) => {
+                  if (e.target.files) handleFileInput(e.target.files);
+                }}
+                style={{ display: 'none' }} 
+              />
+            </label>
           </div>
         )}
       </div>
@@ -315,7 +516,7 @@ export function BookPanel({ data, onClose, onDelete, onUpdate }: BookPanelProps)
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 50,
+        zIndex: 990,
         padding: '2rem'
       }}
     >
@@ -479,6 +680,7 @@ export function BookPanel({ data, onClose, onDelete, onUpdate }: BookPanelProps)
               placeholder="여기에 내용을 입력하세요. 이미지 파일은 이 패널 안으로 드래그 앤 드롭 하세요!"
               style={{
                 flex: 1,
+                minHeight: '250px',
                 background: 'rgba(0,0,0,0.2)',
                 border: '1px solid rgba(255,255,255,0.1)',
                 color: 'var(--color-text-primary)',
@@ -501,10 +703,72 @@ export function BookPanel({ data, onClose, onDelete, onUpdate }: BookPanelProps)
           )}
           
           <div style={{ marginTop: '1.5rem' }}>
+            {renderFiles()}
             {renderLinks()}
           </div>
         </motion.div>
       </motion.div>
+
+      {/* Image Lightbox */}
+      <AnimatePresence>
+        {selectedImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSelectedImage(null)}
+            style={{
+              position: 'fixed',
+              top: 0, left: 0, right: 0, bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.9)',
+              backdropFilter: 'blur(10px)',
+              zIndex: 99999,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '2rem',
+              cursor: 'zoom-out'
+            }}
+          >
+            <motion.img
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              src={selectedImage}
+              alt="크게 보기"
+              style={{
+                maxWidth: '100%',
+                maxHeight: '100%',
+                objectFit: 'contain',
+                borderRadius: '8px',
+                boxShadow: '0 25px 50px -12px rgba(0,0,0,1)'
+              }}
+              onClick={(e) => e.stopPropagation()} // Prevent click from bubbling to backdrop if desired (though zoom-out on image is nice too. we'll let it bubble so clicking anywhere closes it by keeping stopPropagation but adding onClick to img)
+            />
+            <button
+              onClick={() => setSelectedImage(null)}
+              style={{
+                position: 'absolute',
+                top: '20px',
+                right: '20px',
+                background: 'rgba(255,255,255,0.1)',
+                border: 'none',
+                color: 'white',
+                borderRadius: '50%',
+                width: '40px',
+                height: '40px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <X size={24} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

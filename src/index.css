@@ -19,11 +19,13 @@
   padding: 0;
 }
 
-/* Hide scrollbar for shelf carousel */
-.shelf-scroll-container::-webkit-scrollbar {
+/* Hide scrollbar for shelf carousel and image carousel */
+.shelf-scroll-container::-webkit-scrollbar,
+.image-scroll-container::-webkit-scrollbar {
   display: none;
 }
-.shelf-scroll-container {
+.shelf-scroll-container,
+.image-scroll-container {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
